@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt Budget Automator — Google Drive &amp; Gemini Vision to Excel</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Top Header Bar -->
+  <header class="app-header">
+    <div class="container header-inner">
+      <div class="brand-group">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+            <path d="M8 7h8" />
+            <path d="M8 11h8" />
+            <path d="M8 15h5" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="app-title">Receipt Budget Automator</h1>
+          <p class="app-subtitle">Receipt Budget Automator — Google Drive &amp; Gemini Vision to Excel</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <div id="watcher-status-pill" class="status-pill status-pill--neutral" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="watcher-status-text">Checking status...</span>
+        </div>
+
+        <div class="header-actions">
+          <button type="button" id="btn-sync-now" class="btn btn-secondary">
+            <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+              <path d="M3 3v5h5" />
+              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+              <path d="M16 16h5v5" />
+            </svg>
+            <span>Sync Drive Now</span>
+          </button>
+
+          <button type="button" id="btn-toggle-watcher" class="btn btn-secondary">
+            <span id="toggle-watcher-label">Pause</span>
+          </button>
+
+          <button type="button" id="btn-open-setup" class="btn btn-secondary">
+            <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span>Setup &amp; Connections</span>
+            <span id="setup-incomplete-badge" class="badge badge--warning hidden">Action Needed</span>
+          </button>
+
+          <a id="btn-download-excel" href="/api/excel/download" class="btn btn-primary" download>
+            <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span>Download Excel (.xlsx)</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-content">
+    <!-- Excel Lock Alert Banner -->
+    <div id="excel-lock-banner" class="alert-banner alert-banner--warning hidden" role="alert">
+      <svg class="alert-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+        <path d="M12 9v4" />
+        <path d="M12 17h.01" />
+      </svg>
+      <div class="alert-body">
+        <strong>Workbook Locked:</strong>
+        <span id="excel-lock-message">budget_tracker.xlsx is currently open in LibreOffice/Excel. Close it so pending receipts and edits can be saved.</span>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <section class="filter-bar" aria-label="Dashboard filters">
+      <div class="filter-bar-left">
+        <label for="month-filter" class="filter-label">Period</label>
+        <select id="month-filter" class="input-select">
+          <option value="all">All Months</option>
+        </select>
+
+        <button type="button" id="btn-refresh-dashboard" class="btn btn-secondary btn-sm">
+          <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+          </svg>
+          <span>Refresh</span>
+        </button>
+      </div>
+
+      <div class="filter-bar-right">
+        <span id="dashboard-meta-info" class="meta-text">Loading ledger...</span>
+      </div>
+    </section>
+
+    <!-- 5 KPI Cards -->
+    <section class="kpi-grid" aria-label="Key Financial Metrics">
+      <article class="kpi-card">
+        <div class="kpi-label">Total Spent</div>
+        <div class="kpi-value-row">
+          <span id="kpi-total-spent" class="kpi-value">0.00</span>
+          <span class="kpi-currency">RON</span>
+        </div>
+        <div id="kpi-total-sub" class="kpi-sub">All logged receipts</div>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-label">Month Spent</div>
+        <div class="kpi-value-row">
+          <span id="kpi-month-spent" class="kpi-value">0.00</span>
+          <span class="kpi-currency">RON</span>
+        </div>
+        <div id="kpi-month-label" class="kpi-sub">Current month</div>
+      </article>
+
+      <article class="kpi-card kpi-card--positive">
+        <div class="kpi-label">Discounts Saved</div>
+        <div class="kpi-value-row">
+          <span id="kpi-discounts-saved" class="kpi-value">0.00</span>
+          <span class="kpi-currency">RON</span>
+        </div>
+        <div class="kpi-sub">Loyalty &amp; item discounts</div>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-label">SGR Bottle Deposits</div>
+        <div class="kpi-value-row">
+          <span id="kpi-sgr-deposits" class="kpi-value">0.00</span>
+          <span class="kpi-currency">RON</span>
+        </div>
+        <div class="kpi-sub">Returnable SGR packaging</div>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-label">Receipts Logged</div>
+        <div class="kpi-value-row">
+          <span id="kpi-receipts-count" class="kpi-value">0</span>
+          <span id="kpi-items-count-pill" class="kpi-unit-pill">0 items</span>
+        </div>
+        <div class="kpi-sub">
+          <button type="button" id="kpi-needs-review-btn" class="needs-review-pill needs-review-pill--ok" title="Click to filter receipts needing review">
+            <span id="kpi-needs-review-text">0 Needs Review</span>
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <!-- Action Row (2 Columns) -->
+    <section class="two-col-grid action-row" aria-label="Receipt Upload and Activity Feed">
+      <!-- Drag-and-Drop Receipt Uploader -->
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Upload Local Receipts</h2>
+            <p class="card-subtitle">Extract line items immediately with Gemini Vision (no Drive required)</p>
+          </div>
+          <span class="badge badge--neutral">JPG, PNG, WEBP, HEIC, PDF</span>
+        </div>
+
+        <div class="card-body">
+          <div id="upload-dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop receipt files here or press Enter to browse">
+            <input
+              id="upload-file-input"
+              type="file"
+              multiple
+              accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+              class="sr-only"
+            />
+            <div class="dropzone-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </div>
+            <p class="dropzone-title">Drag &amp; drop receipt photos or PDFs here</p>
+            <p class="dropzone-hint">Supports single or batch upload (.jpg, .jpeg, .png, .webp, .heic, .pdf)</p>
+            <button type="button" id="btn-browse-files" class="btn btn-secondary btn-sm">Choose Files</button>
+          </div>
+
+          <div id="upload-progress" class="upload-progress hidden" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span>
+            <span id="upload-progress-text">Extracting receipt data with Gemini Vision...</span>
+          </div>
+
+          <div id="upload-results-wrapper" class="upload-results-wrapper hidden">
+            <div class="upload-results-header">
+              <span class="upload-results-title">Upload Summary</span>
+              <button type="button" id="btn-clear-upload-results" class="btn-link">Clear</button>
+            </div>
+            <ul id="upload-results" class="upload-results-list"></ul>
+          </div>
+        </div>
+      </article>
+
+      <!-- Live Watcher Activity Feed -->
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Live Watcher Activity Feed</h2>
+            <p id="watcher-last-sync" class="card-subtitle">Waiting for watcher status...</p>
+          </div>
+          <div id="watcher-totals" class="watcher-totals">
+            <span class="mini-stat"><strong>0</strong> added</span>
+            <span class="mini-stat"><strong>0</strong> dup</span>
+            <span class="mini-stat"><strong>0</strong> err</span>
+          </div>
+        </div>
+
+        <div class="card-body card-body--flush">
+          <div id="activity-feed" class="activity-feed" role="log" aria-live="polite">
+            <div class="empty-state-compact">No watcher events recorded yet.</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- Visual Analytics Row (2 Columns) -->
+    <section class="two-col-grid analytics-row" aria-label="Spending Analytics">
+      <!-- Spending by Category & Subcategory -->
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Spending by Category</h2>
+            <p class="card-subtitle">Proportional RON breakdown for selected period</p>
+          </div>
+          <div class="segmented-control" role="tablist" aria-label="Category granularity">
+            <button type="button" class="segmented-btn is-active" data-breakdown="main" role="tab" aria-selected="true">
+              Main Categories
+            </button>
+            <button type="button" class="segmented-btn" data-breakdown="sub" role="tab" aria-selected="false">
+              Subcategories
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div id="category-breakdown-list" class="breakdown-list">
+            <div class="empty-state-compact">No spending data for this period.</div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Monthly Spending Trend & Top Stores -->
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Monthly Trend &amp; Top Stores</h2>
+            <p class="card-subtitle">Click any month bar to filter dashboard</p>
+          </div>
+          <span id="trend-months-badge" class="badge badge--neutral">0 months</span>
+        </div>
+
+        <div class="card-body">
+          <div id="monthly-trend-chart" class="monthly-chart" aria-label="Monthly spending bar chart">
+            <div class="empty-state-compact">No monthly trend data yet.</div>
+          </div>
+
+          <div class="stores-section">
+            <h3 class="subsection-title">Top Stores</h3>
+            <div class="table-responsive">
+              <table class="compact-table">
+                <thead>
+                  <tr>
+                    <th>Store</th>
+                    <th class="num">Receipts</th>
+                    <th class="num">Avg Trip</th>
+                    <th class="num">Total (RON)</th>
+                  </tr>
+                </thead>
+                <tbody id="top-stores-tbody">
+                  <tr>
+                    <td colspan="4" class="empty-cell">No stores logged yet.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- Interactive Receipts & Line Items Explorer -->
+    <section class="card explorer-card" aria-label="Receipts and Line Items Explorer">
+      <div class="card-header explorer-header">
+        <div class="tab-bar" role="tablist" aria-label="Explorer view">
+          <button type="button" id="tab-btn-items" class="tab-btn is-active" data-tab="items" role="tab" aria-selected="true">
+            Line Items <span id="tab-items-count" class="tab-count">0</span>
+          </button>
+          <button type="button" id="tab-btn-receipts" class="tab-btn" data-tab="receipts" role="tab" aria-selected="false">
+            Receipts <span id="tab-receipts-count" class="tab-count">0</span>
+          </button>
+        </div>
+
+        <div class="explorer-filters">
+          <div class="search-input-wrap">
+            <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              id="explorer-search"
+              type="search"
+              class="input-text input-search"
+              placeholder="Search store, product, receipt ID..."
+              aria-label="Search store, product, or receipt ID"
+            />
+          </div>
+
+          <select id="explorer-category-filter" class="input-select" aria-label="Filter by Main Category">
+            <option value="all">All Categories</option>
+          </select>
+
+          <select id="explorer-status-filter" class="input-select" aria-label="Filter by Status">
+            <option value="all">All Statuses</option>
+            <option value="OK">OK</option>
+            <option value="Needs Review">Needs Review</option>
+          </select>
+
+          <button type="button" id="btn-clear-explorer-filters" class="btn btn-secondary btn-sm hidden">
+            Reset
+          </button>
+        </div>
+      </div>
+
+      <div class="explorer-meta-strip">
+        <span id="explorer-showing-count" class="meta-text">0 entries</span>
+      </div>
+
+      <!-- Line Items Table -->
+      <div id="items-table-wrapper" class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Receipt ID</th>
+              <th>Date</th>
+              <th>Store</th>
+              <th>Product</th>
+              <th>Main Category</th>
+              <th>Subcategory</th>
+              <th class="num">Qty &amp; Unit</th>
+              <th class="num">Unit Price</th>
+              <th class="num">Discount</th>
+              <th class="num">Net Total</th>
+              <th class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="items-tbody">
+            <tr>
+              <td colspan="11" class="empty-cell">No line items yet. Upload a receipt or sync Google Drive.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Receipts Table -->
+      <div id="receipts-table-wrapper" class="table-responsive hidden">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Receipt ID</th>
+              <th>Date &amp; Time</th>
+              <th>Store</th>
+              <th>Payment Method</th>
+              <th class="num">Items</th>
+              <th class="num">Discounts</th>
+              <th class="num">SGR</th>
+              <th class="num">Total Paid</th>
+              <th>Status</th>
+              <th class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="receipts-tbody">
+            <tr>
+              <td colspan="10" class="empty-cell">No receipts logged yet. Upload a receipt or sync Google Drive.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- 3-Step Setup & Connections Modal/Wizard -->
+  <div id="setup-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="setup-modal-title">
+    <div class="modal modal--wide">
+      <div class="modal-header">
+        <div>
+          <h2 id="setup-modal-title" class="modal-title">Setup &amp; Connections</h2>
+          <p class="modal-subtitle">Configure Gemini Vision and 1-click Google Drive sync, or dismiss to upload local receipts manually.</p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="setup-modal" aria-label="Close setup wizard">&times;</button>
+      </div>
+
+      <div class="modal-body setup-steps">
+        <!-- Step 1: Free Gemini API Key -->
+        <section class="setup-step-card">
+          <div class="setup-step-header">
+            <div class="setup-step-title-group">
+              <span class="step-number">1</span>
+              <div>
+                <h3 class="setup-step-title">Free Gemini API Key</h3>
+                <p class="setup-step-desc">Powers structured Romanian receipt OCR, item categorization &amp; SGR reconciliation.</p>
+              </div>
+            </div>
+            <span id="gemini-status-badge" class="badge badge--warning">Action Needed</span>
+          </div>
+
+          <div class="setup-step-body">
+            <p class="helper-link-row">
+              <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="external-link">
+                Get a Free Gemini API Key from Google AI Studio &#8599;
+              </a>
+            </p>
+
+            <form id="gemini-settings-form" class="form-grid">
+              <div class="form-field form-field--span2">
+                <label for="gemini-api-key" class="field-label">Gemini API Key</label>
+                <div class="input-with-action">
+                  <input
+                    id="gemini-api-key"
+                    type="password"
+                    class="input-text input-mono"
+                    autocomplete="off"
+                    placeholder="Paste your Gemini API key (e.g. AIza... or AQ...)"
+                  />
+                  <button type="button" id="btn-toggle-gemini-key" class="btn btn-secondary btn-sm">Show</button>
+                </div>
+                <span id="gemini-key-hint" class="field-hint">Stored locally in your <code>.env</code> file.</span>
+              </div>
+
+              <div class="form-field">
+                <label for="gemini-model-select" class="field-label">Gemini Vision Model</label>
+                <select id="gemini-model-select" class="input-select">
+                  <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite</option>
+                  <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+                  <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+                  <option value="gemini-3.7-flash">gemini-3.7-flash</option>
+                  <option value="gemini-3.6-flash">gemini-3.6-flash</option>
+                  <option value="gemini-3.5-flash">gemini-3.5-flash</option>
+                </select>
+              </div>
+
+              <div class="form-field form-field--align-end">
+                <button type="submit" id="btn-save-gemini" class="btn btn-primary">
+                  Verify &amp; Save Gemini Key
+                </button>
+              </div>
+            </form>
+
+            <div id="gemini-feedback" class="inline-feedback hidden" role="status"></div>
+          </div>
+        </section>
+
+        <!-- Step 2: 1-Click Google Drive Permission -->
+        <section class="setup-step-card">
+          <div class="setup-step-header">
+            <div class="setup-step-title-group">
+              <span class="step-number">2</span>
+              <div>
+                <h3 class="setup-step-title">1-Click Google Drive Permission</h3>
+                <p class="setup-step-desc">Watch a folder in My Drive and automatically import photos &amp; PDFs into Excel.</p>
+              </div>
+            </div>
+            <span id="drive-status-badge" class="badge badge--warning">Disconnected</span>
+          </div>
+
+          <div class="setup-step-body">
+            <!-- Connected State -->
+            <div id="drive-connected-card" class="drive-connected-card hidden">
+              <div class="drive-account-info">
+                <div class="drive-account-title">
+                  <span class="connected-check" aria-hidden="true">&#10003;</span>
+                  <strong id="drive-user-name">Google Account</strong>
+                  <span id="drive-user-email" class="drive-email"></span>
+                </div>
+                <p class="drive-folder-meta">
+                  Watching folder: <code id="drive-folder-badge">receipts</code>
+                </p>
+              </div>
+              <div class="drive-connected-actions">
+                <a
+                  id="drive-open-folder-link"
+                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-secondary btn-sm hidden"
+                >
+                  Open <span id="drive-open-folder-name">receipts</span> Folder in Google Drive &#8599;
+                </a>
+                <button type="button" id="btn-disconnect-drive" class="btn btn-danger-outline btn-sm">
+                  Disconnect Account
+                </button>
+              </div>
+            </div>
+
+            <!-- Disconnected State -->
+            <div id="drive-disconnected-card" class="drive-disconnected-card">
+              <a id="btn-connect-drive" href="/api/auth/google/start" class="btn btn-drive">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M15 3h6v6" />
+                  <path d="M10 14 21 3" />
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                </svg>
+                <span>Connect Google Drive (1-Click Sign In)</span>
+              </a>
+              <p id="drive-error-note" class="field-hint field-hint--error hidden"></p>
+            </div>
+
+            <div id="drive-feedback" class="inline-feedback hidden" role="status"></div>
+
+            <!-- Advanced Custom credentials.json -->
+            <details class="advanced-oauth-details">
+              <summary>Advanced: Use Custom Google OAuth credentials.json</summary>
+              <div class="advanced-oauth-body">
+                <div class="oauth-source-row">
+                  <span>Current OAuth client:</span>
+                  <span id="oauth-source-badge" class="badge badge--neutral">builtin_default</span>
+                </div>
+                <p class="field-hint">
+                  <strong>OAuth Mode Tip:</strong> If your Google Cloud OAuth consent screen is in <em>Testing</em> mode, only explicitly added Test Users can sign in and refresh tokens expire after 7 days. Switch the OAuth app to <em>In Production</em> for persistent tokens across restarts.
+                </p>
+                <div class="credentials-upload-row">
+                  <input id="credentials-json-input" type="file" accept=".json,application/json" class="input-file" />
+                  <button type="button" id="btn-upload-credentials" class="btn btn-secondary btn-sm">
+                    Upload credentials.json
+                  </button>
+                </div>
+                <div id="credentials-feedback" class="inline-feedback hidden" role="status"></div>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <!-- Step 3: Watched Folder & Automation Settings -->
+        <section class="setup-step-card">
+          <div class="setup-step-header">
+            <div class="setup-step-title-group">
+              <span class="step-number">3</span>
+              <div>
+                <h3 class="setup-step-title">Watched Folder &amp; Automation Settings</h3>
+                <p class="setup-step-desc">Choose the Google Drive folder name and polling frequency.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-step-body">
+            <form id="general-settings-form" class="form-grid form-grid--3col">
+              <div class="form-field">
+                <label for="general-folder-name" class="field-label">Watched Drive Folder</label>
+                <input id="general-folder-name" type="text" class="input-text" value="receipts" required />
+              </div>
+
+              <div class="form-field">
+                <label for="general-poll-interval" class="field-label">Poll Interval (seconds)</label>
+                <input id="general-poll-interval" type="number" min="5" max="3600" step="1" class="input-text" value="20" required />
+              </div>
+
+              <div class="form-field form-field--align-end">
+                <button type="submit" id="btn-save-general" class="btn btn-primary">
+                  Save Automation Settings
+                </button>
+              </div>
+            </form>
+
+            <div id="general-feedback" class="inline-feedback hidden" role="status"></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="modal-footer">
+        <span class="meta-text">You can reopen this wizard anytime from the header.</span>
+        <button type="button" id="btn-close-setup-footer" class="btn btn-secondary" data-close-modal="setup-modal">
+          Done &amp; View Dashboard
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Receipt Modal -->
+  <div id="edit-receipt-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="edit-receipt-title">
+    <div class="modal modal--sm">
+      <div class="modal-header">
+        <div>
+          <h2 id="edit-receipt-title" class="modal-title">Edit Receipt</h2>
+          <p class="modal-subtitle">Receipt <span id="edit-receipt-id-label" class="mono-pill"></span></p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="edit-receipt-modal" aria-label="Close edit receipt dialog">&times;</button>
+      </div>
+
+      <form id="edit-receipt-form">
+        <input id="edit-receipt-id" type="hidden" />
+        <div class="modal-body form-stack">
+          <div class="form-field">
+            <label for="edit-receipt-store" class="field-label">Store Name</label>
+            <input id="edit-receipt-store" type="text" class="input-text" required />
+          </div>
+
+          <div class="form-grid form-grid--2col">
+            <div class="form-field">
+              <label for="edit-receipt-date" class="field-label">Date (YYYY-MM-DD)</label>
+              <input id="edit-receipt-date" type="date" class="input-text" required />
+            </div>
+
+            <div class="form-field">
+              <label for="edit-receipt-time" class="field-label">Time (HH:MM)</label>
+              <input id="edit-receipt-time" type="text" class="input-text input-mono" placeholder="14:35" />
+            </div>
+          </div>
+
+          <div class="form-grid form-grid--2col">
+            <div class="form-field">
+              <label for="edit-receipt-payment" class="field-label">Payment Method</label>
+              <select id="edit-receipt-payment" class="input-select">
+                <option value="Card">Card</option>
+                <option value="Cash">Cash</option>
+                <option value="Voucher">Voucher</option>
+                <option value="Unknown">Unknown</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="edit-receipt-status" class="field-label">Status</label>
+              <select id="edit-receipt-status" class="input-select">
+                <option value="OK">OK</option>
+                <option value="Needs Review">Needs Review</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="edit-receipt-error" class="inline-feedback inline-feedback--error hidden" role="alert"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="edit-receipt-modal">Cancel</button>
+          <button type="submit" id="btn-save-receipt" class="btn btn-primary">Save Receipt</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Line Item Modal -->
+  <div id="edit-item-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="edit-item-title">
+    <div class="modal modal--md">
+      <div class="modal-header">
+        <div>
+          <h2 id="edit-item-title" class="modal-title">Edit Line Item</h2>
+          <p id="edit-item-context" class="modal-subtitle">Receipt line item</p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="edit-item-modal" aria-label="Close edit item dialog">&times;</button>
+      </div>
+
+      <form id="edit-item-form">
+        <input id="edit-item-receipt-id" type="hidden" />
+        <input id="edit-item-index" type="hidden" />
+        <div class="modal-body form-stack">
+          <div class="form-field">
+            <label for="edit-item-clean-name" class="field-label">Clean Product Name</label>
+            <input id="edit-item-clean-name" type="text" class="input-text" required />
+          </div>
+
+          <div class="form-field">
+            <label for="edit-item-raw-name" class="field-label">Raw Receipt Name</label>
+            <input id="edit-item-raw-name" type="text" class="input-text input-mono" />
+          </div>
+
+          <div class="form-grid form-grid--2col">
+            <div class="form-field">
+              <label for="edit-item-main-category" class="field-label">Main Category</label>
+              <select id="edit-item-main-category" class="input-select" required></select>
+            </div>
+
+            <div class="form-field">
+              <label for="edit-item-subcategory" class="field-label">Subcategory</label>
+              <select id="edit-item-subcategory" class="input-select" required></select>
+            </div>
+          </div>
+
+          <div class="form-grid form-grid--3col">
+            <div class="form-field">
+              <label for="edit-item-quantity" class="field-label">Quantity</label>
+              <input id="edit-item-quantity" type="number" step="0.001" min="0.001" class="input-text" required />
+            </div>
+
+            <div class="form-field">
+              <label for="edit-item-unit" class="field-label">Unit</label>
+              <input id="edit-item-unit" type="text" list="unit-suggestions" class="input-text" required />
+              <datalist id="unit-suggestions">
+                <option value="buc"></option>
+                <option value="kg"></option>
+                <option value="g"></option>
+                <option value="l"></option>
+                <option value="ml"></option>
+                <option value="set"></option>
+              </datalist>
+            </div>
+
+            <div class="form-field">
+              <label for="edit-item-unit-price" class="field-label">Unit Price (RON)</label>
+              <input id="edit-item-unit-price" type="number" step="0.01" class="input-text" required />
+            </div>
+          </div>
+
+          <div class="form-grid form-grid--2col">
+            <div class="form-field">
+              <label for="edit-item-discount" class="field-label">Discount Amount (RON)</label>
+              <input id="edit-item-discount" type="number" step="0.01" min="0" class="input-text" required />
+            </div>
+
+            <div class="form-field">
+              <label for="edit-item-net-total" class="field-label">Net Total (RON)</label>
+              <input id="edit-item-net-total" type="number" step="0.01" class="input-text" required />
+              <span class="field-hint">Auto-updates from Qty &times; Price &minus; Discount (editable to override).</span>
+            </div>
+          </div>
+
+          <div id="edit-item-error" class="inline-feedback inline-feedback--error hidden" role="alert"></div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="edit-item-modal">Cancel</button>
+          <button type="submit" id="btn-save-item" class="btn btn-primary">Save Line Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Receipt Confirmation Modal -->
+  <div id="delete-receipt-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="delete-receipt-title">
+    <div class="modal modal--sm">
+      <div class="modal-header">
+        <div>
+          <h2 id="delete-receipt-title" class="modal-title">Delete Receipt?</h2>
+          <p class="modal-subtitle">This removes the receipt and all its line items from Excel.</p>
+        </div>
+        <button type="button" class="modal-close" data-close-modal="delete-receipt-modal" aria-label="Close delete confirmation">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p id="delete-receipt-summary" class="delete-summary-text"></p>
+        <div id="delete-receipt-error" class="inline-feedback inline-feedback--error hidden" role="alert"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal="delete-receipt-modal">Cancel</button>
+        <button type="button" id="btn-confirm-delete-receipt" class="btn btn-danger">Delete Receipt</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

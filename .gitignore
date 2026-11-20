@@ -1,0 +1,19 @@
+# Secrets and OAuth tokens
+.env
+credentials.json
+token.json
+
+# Virtual environment & Python cache
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Runtime state, spreadsheets, failed receipts, and lock/temp files
+*.xlsx
+failed_receipts/
+data/processed_state.json
+*.tmp
+.~lock.*
+logs/

@@ -1,0 +1,15 @@
+[Unit]
+Description=Automated Google Drive Receipt-to-Excel Budget Watcher
+After=network-online.target graphical-session.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/tudor/Documents/monthly-budget-automation
+ExecStart=/home/tudor/Documents/monthly-budget-automation/.venv/bin/python /home/tudor/Documents/monthly-budget-automation/app.py --host 127.0.0.1 --port 8765
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
